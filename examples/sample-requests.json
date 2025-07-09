@@ -1,0 +1,289 @@
+{
+  "health_check": {
+    "description": "Test the health endpoint",
+    "method": "GET",
+    "url": "http://localhost:8000/health",
+    "expected_response": {
+      "status": "healthy",
+      "version": "1.0.0",
+      "environment": "development"
+    }
+  },
+  "agent_info": {
+    "description": "Get agent capabilities and available tools",
+    "method": "GET",
+    "url": "http://localhost:8000/agent/info",
+    "expected_response": {
+      "agent_type": "SimpleAgent",
+      "capabilities": [
+        "Natural language conversation",
+        "Time queries",
+        "Web search",
+        "Mathematical calculations",
+        "Session management"
+      ],
+      "tools": [
+        "get_current_time",
+        "search_web",
+        "calculate"
+      ]
+    }
+  },
+  "simple_chat": {
+    "description": "Basic chat interaction",
+    "method": "POST",
+    "url": "http://localhost:8000/chat",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "message": "Hello, how are you today?"
+    },
+    "expected_response": {
+      "response": "Hello! I'm doing well, thank you for asking. I'm here and ready to help you with any questions or tasks you might have. How can I assist you today?",
+      "session_id": "generated-uuid",
+      "metadata": {
+        "timestamp": "2024-01-01T12:00:00.000Z",
+        "message_count": 2
+      }
+    }
+  },
+  "time_query": {
+    "description": "Ask for current time (tests tool usage)",
+    "method": "POST",
+    "url": "http://localhost:8000/chat",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "message": "What time is it right now?",
+      "session_id": "time-test-session"
+    },
+    "expected_response": {
+      "response": "The current time is 2024-01-01 12:00:00",
+      "session_id": "time-test-session",
+      "metadata": {
+        "timestamp": "2024-01-01T12:00:00.000Z",
+        "message_count": 2
+      }
+    }
+  },
+  "calculation_query": {
+    "description": "Ask for a mathematical calculation",
+    "method": "POST",
+    "url": "http://localhost:8000/chat",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "message": "Can you calculate 25 * 4 + 15?",
+      "session_id": "calc-test-session"
+    },
+    "expected_response": {
+      "response": "The result of 25 * 4 + 15 is 115",
+      "session_id": "calc-test-session",
+      "metadata": {
+        "timestamp": "2024-01-01T12:00:00.000Z",
+        "message_count": 2
+      }
+    }
+  },
+  "search_query": {
+    "description": "Ask for web search (placeholder functionality)",
+    "method": "POST",
+    "url": "http://localhost:8000/chat",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "message": "Search for the latest news about artificial intelligence",
+      "session_id": "search-test-session"
+    },
+    "expected_response": {
+      "response": "Search results for 'latest news about artificial intelligence': This is a placeholder search result. In production, this would return actual web search results.",
+      "session_id": "search-test-session",
+      "metadata": {
+        "timestamp": "2024-01-01T12:00:00.000Z",
+        "message_count": 2
+      }
+    }
+  },
+  "session_continuation": {
+    "description": "Continue conversation in existing session",
+    "method": "POST",
+    "url": "http://localhost:8000/chat",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "message": "Can you remind me what we were talking about?",
+      "session_id": "time-test-session"
+    },
+    "note": "This should reference the previous conversation in the same session"
+  },
+  "session_with_context": {
+    "description": "Chat with additional context",
+    "method": "POST",
+    "url": "http://localhost:8000/chat",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "message": "Help me plan a meeting",
+      "session_id": "context-test-session",
+      "context": {
+        "user_timezone": "PST",
+        "user_role": "product_manager",
+        "project": "Q1 planning"
+      }
+    }
+  },
+  "reset_session": {
+    "description": "Reset a specific session",
+    "method": "POST",
+    "url": "http://localhost:8000/agent/reset/time-test-session",
+    "expected_response": {
+      "message": "Session time-test-session reset successfully"
+    }
+  },
+  "error_handling": {
+    "description": "Test error handling with invalid input",
+    "method": "POST",
+    "url": "http://localhost:8000/chat",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "message": ""
+    },
+    "note": "Should handle empty message gracefully"
+  },
+  "curl_examples": {
+    "description": "Example curl commands for testing",
+    "examples": [
+      {
+        "name": "Health Check",
+        "command": "curl http://localhost:8000/health"
+      },
+      {
+        "name": "Agent Info",
+        "command": "curl http://localhost:8000/agent/info"
+      },
+      {
+        "name": "Simple Chat",
+        "command": "curl -X POST \"http://localhost:8000/chat\" -H \"Content-Type: application/json\" -d '{\"message\": \"Hello, how are you?\"}'"
+      },
+      {
+        "name": "Time Query",
+        "command": "curl -X POST \"http://localhost:8000/chat\" -H \"Content-Type: application/json\" -d '{\"message\": \"What time is it?\", \"session_id\": \"test-session\"}'"
+      },
+      {
+        "name": "Math Calculation",
+        "command": "curl -X POST \"http://localhost:8000/chat\" -H \"Content-Type: application/json\" -d '{\"message\": \"Calculate 15 * 8\", \"session_id\": \"calc-session\"}'"
+      },
+      {
+        "name": "Reset Session",
+        "command": "curl -X POST \"http://localhost:8000/agent/reset/test-session\""
+      }
+    ]
+  },
+  "load_testing": {
+    "description": "Load testing examples",
+    "examples": [
+      {
+        "name": "Apache Bench - Health Check",
+        "command": "ab -n 100 -c 10 http://localhost:8000/health"
+      },
+      {
+        "name": "Apache Bench - Chat Endpoint",
+        "command": "ab -n 50 -c 5 -p chat_request.json -T application/json http://localhost:8000/chat",
+        "note": "Create chat_request.json with: {\"message\": \"Hello\"}"
+      }
+    ]
+  },
+  "production_testing": {
+    "description": "Examples for testing production deployment",
+    "note": "Replace localhost:8000 with your ALB DNS name",
+    "examples": [
+      {
+        "name": "Production Health Check",
+        "command": "curl https://your-alb-dns-name.elb.amazonaws.com/health"
+      },
+      {
+        "name": "Production Chat",
+        "command": "curl -X POST \"https://your-alb-dns-name.elb.amazonaws.com/chat\" -H \"Content-Type: application/json\" -d '{\"message\": \"Hello from production!\"}'"
+      }
+    ]
+  },
+  "monitoring_endpoints": {
+    "description": "Endpoints useful for monitoring and observability",
+    "endpoints": [
+      {
+        "path": "/health",
+        "description": "Basic health check",
+        "use_case": "Load balancer health checks"
+      },
+      {
+        "path": "/agent/info",
+        "description": "Agent capabilities and configuration",
+        "use_case": "Service discovery and monitoring"
+      },
+      {
+        "path": "/docs",
+        "description": "API documentation (development only)",
+        "use_case": "Development and testing"
+      }
+    ]
+  },
+  "testing_scenarios": {
+    "description": "Comprehensive testing scenarios",
+    "scenarios": [
+      {
+        "name": "Basic Functionality",
+        "steps": [
+          "Test health endpoint",
+          "Get agent info",
+          "Send simple chat message",
+          "Verify response format"
+        ]
+      },
+      {
+        "name": "Tool Usage",
+        "steps": [
+          "Ask for current time",
+          "Request calculation",
+          "Try search query",
+          "Verify tool responses"
+        ]
+      },
+      {
+        "name": "Session Management",
+        "steps": [
+          "Start new session",
+          "Send multiple messages",
+          "Continue conversation",
+          "Reset session",
+          "Verify session cleared"
+        ]
+      },
+      {
+        "name": "Error Handling",
+        "steps": [
+          "Send empty message",
+          "Send malformed JSON",
+          "Reset non-existent session",
+          "Verify error responses"
+        ]
+      },
+      {
+        "name": "Performance",
+        "steps": [
+          "Concurrent requests",
+          "Long conversation",
+          "Memory usage check",
+          "Response time measurement"
+        ]
+      }
+    ]
+  }
+}

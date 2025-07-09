@@ -1,0 +1,104 @@
+# Architecture Diagram Placeholder
+
+This file would contain the architecture diagram for the LangGraph AWS deployment.
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Internet                                  │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────────┐
+│                Application Load Balancer                        │
+│                  (Internet-facing)                              │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────────┐
+│                    VPC                                          │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │              Public Subnets                                 ││
+│  │  ┌─────────────────┐    ┌─────────────────┐                ││
+│  │  │   AZ-1a         │    │   AZ-1b         │                ││
+│  │  │  NAT Gateway    │    │  NAT Gateway    │                ││
+│  │  └─────────────────┘    └─────────────────┘                ││
+│  └─────────────────────────────────────────────────────────────┘│
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │              Private Subnets                                ││
+│  │  ┌─────────────────┐    ┌─────────────────┐                ││
+│  │  │   AZ-1a         │    │   AZ-1b         │                ││
+│  │  │  ECS Tasks      │    │  ECS Tasks      │                ││
+│  │  │  (Fargate)      │    │  (Fargate)      │                ││
+│  │  └─────────────────┘    └─────────────────┘                ││
+│  └─────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    AWS Services                                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │    ECR      │  │  Parameter  │  │ CloudWatch  │              │
+│  │ (Container  │  │   Store     │  │   Logs      │              │
+│  │  Registry)  │  │ (Secrets)   │  │(Monitoring) │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                  External Services                              │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │   OpenAI    │  │  External   │  │    Other    │              │
+│  │     API     │  │     APIs    │  │  Services   │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Components Description
+
+### Load Balancer
+- **Application Load Balancer (ALB)**: Routes traffic to ECS tasks
+- **Health Checks**: Monitors `/health` endpoint
+- **Auto Scaling**: Distributes load across multiple tasks
+
+### Compute
+- **ECS Fargate**: Serverless container hosting
+- **Auto Scaling**: Scales based on CPU/memory utilization
+- **Multi-AZ**: Deployed across multiple availability zones
+
+### Networking
+- **VPC**: Isolated network environment
+- **Public Subnets**: ALB and NAT Gateways
+- **Private Subnets**: ECS tasks (no direct internet access)
+- **NAT Gateways**: Outbound internet access for private subnets
+
+### Storage & Secrets
+- **ECR**: Container image registry
+- **Parameter Store**: Encrypted secrets management
+- **CloudWatch Logs**: Centralized logging
+
+### Security
+- **Security Groups**: Network-level firewall rules
+- **IAM Roles**: Least privilege access
+- **Encrypted Storage**: Secrets and logs encryption
+
+## Data Flow
+
+1. **User Request** → ALB → ECS Task
+2. **Agent Processing** → OpenAI API (via NAT Gateway)
+3. **Logging** → CloudWatch Logs
+4. **Secrets** → Parameter Store
+5. **Response** → User
+
+## Monitoring & Observability
+
+- CloudWatch Metrics
+- Application Logs
+- Health Checks
+- Auto Scaling Events
+
+---
+
+To create an actual architecture diagram, you could use tools like:
+- AWS Architecture Center diagrams
+- Lucidchart
+- Draw.io
+- CloudCraft
+- AWS Application Composer
