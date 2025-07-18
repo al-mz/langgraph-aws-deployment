@@ -5,10 +5,8 @@ services:
     build: .
     ports:
       - "8000:8000"
-    environment:
-      - ENVIRONMENT=development
-      - LOG_LEVEL=DEBUG
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    env_file:
+      - .env
     volumes:
       - ./app:/app/app
       - ./logs:/app/logs
