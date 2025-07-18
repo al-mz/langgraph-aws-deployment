@@ -102,9 +102,6 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ### 3. Deploy to AWS
 
 ```bash
-# Deploy to development environment
-./aws/scripts/deploy-langgraph.sh development ca-central-1
-
 # Deploy to production
 ./aws/scripts/deploy-langgraph.sh production us-east-1
 ```
