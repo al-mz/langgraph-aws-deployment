@@ -2,19 +2,16 @@
 
 🚀 **Production-ready template for deploying LangGraph agents to AWS using ECS Fargate**
 
-This repository provides a complete infrastructure-as-code solution for deploying LangGraph-based AI agents to AWS with enterprise-grade scalability, security, and monitoring.
+Complete infrastructure-as-code solution for deploying LangGraph-based AI agents to AWS with auto-scaling, load balancing, and secure secrets management.
 
 ## ✨ Features
 
-- **🐳 Containerized Deployment**: Docker containers with ECS Fargate
-- **🏗️ Infrastructure as Code**: CloudFormation templates for reproducible deployments
-- **🔒 Security First**: Encrypted secrets management with Parameter Store
-- **📈 Auto Scaling**: Automatic scaling based on CPU/memory utilization
+- **🐳 Containerized Deployment**: Docker + ECS Fargate
+- **🏗️ Infrastructure as Code**: CloudFormation templates
+- **🔒 Security First**: Encrypted secrets with Parameter Store
+- **📈 Auto Scaling**: CPU/memory-based scaling
 - **🌐 Load Balancing**: Application Load Balancer with health checks
-- **📊 Monitoring**: CloudWatch integration for logs and metrics
-- **🔧 Developer Friendly**: Local development setup with Docker Compose
-- **🤖 Working LangGraph Integration**: Complete FastAPI + LangGraph setup ready to deploy
-- **📚 Comprehensive Documentation**: Step-by-step guides and troubleshooting
+- **🔧 Developer Friendly**: Local development setup
 
 ## 🏛️ Architecture
 
@@ -24,15 +21,50 @@ Internet → ALB → ECS Fargate Tasks (Private Subnets) → OpenAI API
         CloudWatch Logs & Parameter Store
 ```
 
-**Key Components:**
-- **FastAPI Application** with integrated LangGraph agent
-- **LangGraph Workflow** with configurable parameters and streaming support
-- **ECS Fargate** for serverless container execution
-- **Application Load Balancer** for high availability
-- **VPC with public/private subnets** across multiple AZs
-- **Parameter Store** for secrets management
-- **ECR** for container registry
-- **CloudWatch** for monitoring and logging
+### Deployment Architecture
+
+```mermaid
+graph TB
+    subgraph "🏗️ Development"
+        DEV[Developer] --> LOCAL[Local Testing]
+        LOCAL --> DOCKER[Docker Build]
+    end
+    
+    subgraph "☁️ AWS Infrastructure"
+        subgraph "🏗️ Foundation"
+            ECR[ECR Repository]
+            IAM[IAM Roles]
+            SSM[Parameter Store]
+        end
+        
+        subgraph "🌐 Network"
+            VPC[VPC] --> ALB[Load Balancer]
+            ALB --> ECS[ECS Service]
+        end
+        
+        subgraph "🚢 Application"
+            ECS --> TASK1[Fargate Task 1]
+            ECS --> TASK2[Fargate Task 2]
+        end
+    end
+    
+    subgraph "🌍 External"
+        USERS[Users] --> ALB
+        TASK1 --> OPENAI[OpenAI API]
+        TASK2 --> OPENAI
+    end
+    
+    DOCKER --> ECR
+    ECR --> ECS
+    
+    classDef aws fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef app fill:#2196F3,stroke:#1565C0,stroke-width:2px,color:#fff
+    classDef ext fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px,color:#fff
+    
+    class ECR,IAM,SSM,VPC,ALB,ECS aws
+    class TASK1,TASK2,DOCKER app
+    class USERS,OPENAI ext
+```
 
 ## 🚀 Quick Start
 
@@ -41,424 +73,168 @@ Internet → ALB → ECS Fargate Tasks (Private Subnets) → OpenAI API
 - [Python 3.12+](https://www.python.org/downloads/)
 - [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
 - [Docker](https://docs.docker.com/get-docker/)
-- [jq](https://stedolan.github.io/jq/) for JSON processing
+- [jq](https://stedolan.github.io/jq/)
 - OpenAI API key
 
-### 1. Clone and Configure
+### 1. Setup
 
 ```bash
 git clone https://github.com/your-username/langgraph-aws-deployment.git
 cd langgraph-aws-deployment
-cp examples/.env.example .env
-
-# Edit with your configuration
-export OPENAI_API_KEY="your-openai-api-key"
-export AWS_DEFAULT_REGION="us-east-1"
+cp .env.example .env
+# Edit .env with your OpenAI API key
 ```
 
-### 2. Local Development Setup
-
-The repository includes a fully working LangGraph agent integrated with FastAPI. Follow these steps to run it locally:
+### 2. Local Development
 
 ```bash
-# Create virtual environment (recommended)
+# Create virtual environment
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Copy environment template and configure
-cp examples/.env.example .env
-# Edit .env and add your OPENAI_API_KEY
-
-# Test the LangGraph agent locally
-python test_complete.py
-
-# Run the FastAPI application
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# Run locally
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The application will be available at:
-- **API Documentation**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/health
-- **Agent Info**: http://localhost:8000/agent/info
-
-### 3. Test the Integration
+### 3. Deploy to AWS
 
 ```bash
-# Test all endpoints
-python test_api.py
-
-# Test individual features
-curl -X POST "http://localhost:8000/chat" \
-     -H "Content-Type: application/json" \
-     -d '{"message": "Hello, how are you?", "session_id": "test-123"}'
-
-# Test streaming endpoint
-curl -X POST "http://localhost:8000/chat/stream" \
-     -H "Content-Type: application/json" \
-     -d '{"message": "Stream me a response!", "session_id": "test-stream"}'
-```
-
-### 4. Deploy to AWS
-
-```bash
-# One-command deployment to development
-./aws/scripts/deploy.sh
+# Deploy to development environment
+./aws/scripts/deploy-langgraph.sh development ca-central-1
 
 # Deploy to production
-./aws/scripts/deploy.sh -e production -r us-west-2
+./aws/scripts/deploy-langgraph.sh production us-east-1
 ```
 
-### 5. Test Your Deployment
+### 4. Test Deployment
 
 ```bash
-# The script will output your ALB URL
-curl https://your-alb-url.elb.amazonaws.com/health
+# Test health endpoint
+curl https://your-alb-url.amazonaws.com/health
 
-# Test the chat endpoint
-curl -X POST "https://your-alb-url.elb.amazonaws.com/chat" \
-     -H "Content-Type: application/json" \
-     -d '{"message": "Hello, how are you?"}'
+# Test chat
+curl -X POST "https://your-alb-url.amazonaws.com/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello!", "session_id": "test-123"}'
+```
+
+### 5. Cleanup
+
+```bash
+# Remove all AWS resources
+./cleanup-aws.sh development ca-central-1
 ```
 
 ## 🔌 API Endpoints
 
-The FastAPI application provides the following endpoints:
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/docs` | GET | API documentation |
+| `/chat` | POST | Send message to LangGraph agent |
+| `/chat/stream` | POST | Streaming chat response |
+| `/agent/info` | GET | Agent metadata |
 
-### Core Endpoints
-
-| Endpoint | Method | Description | Example |
-|----------|--------|-------------|---------|
-| `/health` | GET | Health check for load balancer | Returns service status |
-| `/docs` | GET | Interactive API documentation | Swagger UI |
-| `/agent/info` | GET | Get agent capabilities and tools | Agent metadata |
-
-### Chat Endpoints
-
-| Endpoint | Method | Description | Request Body |
-|----------|--------|-------------|--------------|
-| `/chat` | POST | Process message with LangGraph | `{"message": "Hello", "session_id": "123"}` |
-| `/chat/stream` | POST | Stream response from LangGraph | Same as `/chat` but streams chunks |
-| `/agent/reset/{session_id}` | POST | Reset agent session | None |
-
-### Example Requests
+### Example Usage
 
 ```bash
 # Basic chat
 curl -X POST "http://localhost:8000/chat" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "message": "Explain quantum computing",
-       "session_id": "user-123",
-       "context": {"config": "detailed"}
-     }'
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello!", "session_id": "user-123"}'
 
 # Streaming chat
 curl -X POST "http://localhost:8000/chat/stream" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "message": "Tell me a story",
-       "session_id": "user-456"
-     }'
-```
-
-### Response Formats
-
-**Standard Chat Response:**
-```json
-{
-  "response": "LangGraph agent response",
-  "session_id": "user-123",
-  "metadata": {
-    "timestamp": "2025-07-09T14:58:04.248654",
-    "config": {"my_configurable_param": "detailed"}
-  }
-}
-```
-
-**Streaming Response (Server-Sent Events):**
-```
-data: {"type": "chunk", "data": {...}, "session_id": "user-456", "timestamp": "..."}
-
-data: {"type": "complete", "session_id": "user-456", "timestamp": "..."}
-
-data: [DONE]
+  -H "Content-Type: application/json" \
+  -d '{"message": "Tell me a story", "session_id": "user-456"}'
 ```
 
 ## 📁 Project Structure
 
 ```
 langgraph-aws-deployment/
-├── README.md
-├── .gitignore
-├── requirements.txt           # Python dependencies with LangGraph/LangChain
-├── Dockerfile                 # Container configuration
-├── docker-compose.yml         # Local development environment
-├── .env                       # Local environment variables
-│
-├── app/                       # Application code
-│   ├── __init__.py
-│   ├── main.py               # FastAPI app with LangGraph integration
-│   ├── config.py             # Configuration management
-│   ├── agents/               # Legacy agent structure (for reference)
-│   │   ├── __init__.py
-│   │   ├── simple_agent.py
-│   │   └── tools.py
-│   └── agent/                # LangGraph agent implementation
-│       └── src/
-│           └── agent/
-│               ├── __init__.py
-│               └── graph.py   # Working LangGraph workflow
-│
-├── test_*.py                 # Test scripts for local verification
-├── test_api.py              # FastAPI endpoint testing
-│
-├── aws/                      # AWS infrastructure
-│   ├── cloudformation/
-│   │   ├── vpc-stack.yaml    # VPC and networking
-│   │   └── ecs-stack.yaml    # ECS, ALB, and auto scaling
-│   └── scripts/
-│       ├── deploy.sh         # Main deployment script
-│       ├── setup-ecr.sh      # ECR repository setup
-│       └── manage-secrets.sh # Parameter Store management
-│
-├── docs/                     # Documentation
-│   ├── architecture-diagram.png
-│   ├── deployment-guide.md
-│   └── troubleshooting.md
-│
-└── examples/                 # Examples and templates
-    ├── .env.example          # Environment template
-    ├── local-development.md  # Local setup guide
-    └── sample-requests.json  # API testing examples
-```
-
-## 🛠️ Local Development
-
-### Run Locally with Docker Compose
-
-```bash
-# Copy environment template
-cp examples/.env.example .env
-
-# Start the application
-docker-compose up --build
-
-# Test locally
-curl http://localhost:8000/health
-curl -X POST "http://localhost:8000/chat" \
-     -H "Content-Type: application/json" \
-     -d '{"message": "What time is it?"}'
-```
-
-### Run Locally with Python
-
-```bash
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the application
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+├── app/                      # Application code
+│   ├── main.py              # FastAPI app
+│   ├── config.py            # Configuration
+│   └── agent/               # LangGraph agent
+├── aws/                     # AWS infrastructure
+│   ├── cloudformation/      # CloudFormation templates
+│   └── scripts/             # Deployment scripts
+├── requirements.txt         # Python dependencies
+├── Dockerfile              # Container definition
+├── docker-compose.yml      # Local development
+└── cleanup-aws.sh          # Cleanup script
 ```
 
 ## 🔧 Configuration
 
 ### Environment Variables
 
-Key configuration options:
-
 ```bash
 # Required
 OPENAI_API_KEY=your_openai_api_key
 
-# Optional (with defaults)
+# Optional
 ENVIRONMENT=development
 OPENAI_MODEL=gpt-4
-AGENT_TIMEOUT=30
 LOG_LEVEL=INFO
 ```
 
-### AWS Parameter Store
+##  Estimated Costs
 
-For production deployments, secrets are managed in AWS Parameter Store:
+**Development:**
+- ECS Fargate: ~$25-40/month
+- ALB: ~$20/month
+- NAT Gateway: ~$45/month
+- **Total: ~$90-105/month**
+
+**Production:**
+- ECS Fargate (2-5 tasks): ~$100-250/month
+- ALB: ~$20/month
+- NAT Gateway: ~$90/month
+- **Total: ~$210-360/month**
+
+## 🗑️ Cleanup
+
+Remove all AWS resources when done:
 
 ```bash
-# Setup secrets for an environment
-./aws/scripts/manage-secrets.sh setup production
-
-# List parameters
-./aws/scripts/manage-secrets.sh list production
-
-# Backup/restore parameters
-./aws/scripts/manage-secrets.sh backup production backup.json
-./aws/scripts/manage-secrets.sh restore production backup.json
+./cleanup-aws.sh development ca-central-1
 ```
 
-## 📊 Monitoring
+## 🛠️ Development
 
-### CloudWatch Integration
+### Local Testing
 
-- **Application Logs**: Structured logging with correlation IDs
-- **Metrics**: CPU, memory, request count, response time
-- **Alarms**: Auto scaling triggers and error rate monitoring
-- **Dashboards**: Custom CloudWatch dashboards for visualization
+```bash
+# Run with Docker Compose
+docker-compose up --build
 
-### Health Checks
+# Test locally
+curl http://localhost:8000/health
+```
 
-- **Load Balancer**: `/health` endpoint monitoring
-- **ECS Service**: Container health checks
-- **Application**: Internal health monitoring and metrics
+### Test Scripts
+
+- `test_complete.py` - Complete functionality test
+- `test_api.py` - API endpoint tests
 
 ## 🔒 Security
 
-### Network Security
-- VPC with public/private subnet architecture
-- Security groups with minimal required access
-- NAT Gateways for outbound internet access
-- No direct internet access to application containers
-
-### Application Security
-- Non-root container execution
-- Secrets stored in encrypted Parameter Store
-- IAM roles with least privilege access
-- Input validation and error handling
-
-### Production Hardening
-- SSL/TLS termination at load balancer
-- Web Application Firewall (WAF) integration
-- VPC Flow Logs for network monitoring
-- Regular security updates and scanning
-
-## 🚀 Deployment Environments
-
-### Development
-- Single ECS task
-- Basic monitoring
-- Cost-optimized configuration
-- HTTP-only (no SSL)
-
-### Staging
-- Multi-task deployment
-- Enhanced monitoring
-- SSL termination
-- Production-like configuration
-
-### Production
-- Auto-scaling ECS service
-- Comprehensive monitoring and alerting
-- SSL termination with custom domain
-- Enhanced security and compliance
-
-## 💰 Cost Optimization
-
-### Estimated Monthly Costs
-
-**Development Environment:**
-- ECS Fargate (1 task): ~$25-40
-- ALB: ~$20
-- NAT Gateway: ~$45
-- CloudWatch/Parameter Store: ~$5
-- **Total: ~$95-110/month**
-
-**Production Environment:**
-- ECS Fargate (2-5 tasks): ~$100-250
-- ALB: ~$20
-- NAT Gateway (Multi-AZ): ~$90
-- CloudWatch/Parameter Store: ~$10
-- **Total: ~$220-370/month**
-
-### Cost Optimization Tips
-- Use Spot instances for development
-- Right-size CPU/memory allocations
-- Implement auto-scaling policies
-- Set up billing alerts and cost monitoring
-
-## 🧪 Testing
-
-The repository includes comprehensive test scripts:
-
-- **`test_complete.py`** - Complete LangGraph functionality test
-- **`test_api.py`** - FastAPI endpoint integration test
-- **`test_basic.py`** - Basic graph structure verification
-- **`test_minimal.py`** - Minimal functionality test
-
-Run all tests:
-```bash
-# Test LangGraph directly
-python test_complete.py
-
-# Test FastAPI integration (requires app to be running)
-python test_api.py
-```
-
-## 📚 Documentation
-
-- **[Deployment Guide](docs/deployment-guide.md)**: Comprehensive deployment instructions
-- **[Local Development](examples/local-development.md)**: Local setup and development workflow
-- **[Troubleshooting](docs/troubleshooting.md)**: Common issues and solutions
-- **[API Examples](examples/sample-requests.json)**: Testing examples and API documentation
-
-## 🛠️ Customization
-
-### Adding New Tools
-
-1. Implement tool function in `app/agents/tools.py`
-2. Register in `AVAILABLE_TOOLS` dictionary
-3. Update agent logic in `simple_agent.py`
-4. Test locally and deploy
-
-### Modifying Agent Behavior
-
-1. Edit system prompt in `_get_system_prompt()`
-2. Modify graph structure in `_build_graph()`
-3. Add new nodes or edges as needed
-4. Update configuration parameters
-
-### Infrastructure Changes
-
-1. Modify CloudFormation templates in `aws/cloudformation/`
-2. Update deployment scripts if needed
-3. Test changes in development environment
-4. Deploy to production with proper change management
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- VPC with private subnets
+- Encrypted secrets in Parameter Store
+- IAM roles with least privilege
+- SSL termination at load balancer
 
 ## 🆘 Support
 
-- **Documentation**: Check the [docs/](docs/) directory
-- **Issues**: Open a GitHub issue
-- **Discussions**: Use GitHub Discussions for questions
-- **AWS Support**: Refer to AWS documentation and support
-
-## 🚧 Roadmap
-
-- [ ] CI/CD pipeline integration (GitHub Actions/CodePipeline)
-- [ ] Multi-region deployment support
-- [ ] Database integration (RDS/DynamoDB)
-- [ ] WebSocket support for real-time interactions
-- [ ] Prometheus/Grafana monitoring integration
-- [ ] Terraform alternative to CloudFormation
-- [ ] Kubernetes deployment option
-- [ ] Advanced agent capabilities and tool integrations
+- Check the `docs/` directory for detailed guides
+- Open GitHub issues for problems
+- AWS documentation for AWS-specific issues
 
 ---
 
-**⭐ Star this repository if you find it helpful!**
-
-Built with ❤️ for the LangGraph and AWS community.
+**Built with ❤️ for the LangGraph community**
