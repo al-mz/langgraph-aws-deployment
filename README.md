@@ -180,20 +180,6 @@ OPENAI_MODEL=gpt-4
 LOG_LEVEL=INFO
 ```
 
-##  Estimated Costs
-
-**Development:**
-- ECS Fargate: ~$25-40/month
-- ALB: ~$20/month
-- NAT Gateway: ~$45/month
-- **Total: ~$90-105/month**
-
-**Production:**
-- ECS Fargate (2-5 tasks): ~$100-250/month
-- ALB: ~$20/month
-- NAT Gateway: ~$90/month
-- **Total: ~$210-360/month**
-
 ## 🗑️ Cleanup
 
 Remove all AWS resources when done:
@@ -213,25 +199,6 @@ docker-compose up --build
 # Test locally
 curl http://localhost:8000/health
 ```
-
-### Test Scripts
-
-- `test_complete.py` - Complete functionality test
-- `test_api.py` - API endpoint tests
-
-## 🔒 Security
-
-- VPC with private subnets
-- Encrypted secrets in Parameter Store
-- IAM roles with least privilege
-- SSL termination at load balancer
-
-## 🆘 Support
-
-- Check the `docs/` directory for detailed guides
-- Open GitHub issues for problems
-- AWS documentation for AWS-specific issues
-
 ---
 
 **Built with ❤️ for the LangGraph community**
