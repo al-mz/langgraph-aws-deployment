@@ -32,6 +32,26 @@ Parameters:
     Default: '/langgraph/openai-api-key'
     Description: Parameter Store path for OpenAI API key
 
+  CertificateArn:
+    Type: String
+    Default: ''
+    Description: ACM certificate ARN for HTTPS. Leave empty to serve plain HTTP.
+
+  DomainName:
+    Type: String
+    Default: ''
+    Description: Domain the certificate covers. Required with CertificateArn; point it at the ALB.
+
+Rules:
+  DomainNameWithCertificate:
+    RuleCondition: !Not [!Equals [!Ref CertificateArn, '']]
+    Assertions:
+      - Assert: !Not [!Equals [!Ref DomainName, '']]
+        AssertDescription: DomainName is required when CertificateArn is set
+
+Conditions:
+  HasCertificate: !Not [!Equals [!Ref CertificateArn, '']]
+
 Resources:
   # ECS Cluster
   ECSCluster:
@@ -81,16 +101,37 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
-  # ALB Listener
+  # ALB Listener (redirects to HTTPS when a certificate is set)
   ALBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions: !If
+        - HasCertificate
+        - - Type: redirect
+            RedirectConfig:
+              Protocol: HTTPS
+              Port: '443'
+              StatusCode: HTTP_301
+        - - Type: forward
+            TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  # HTTPS Listener
+  HTTPSListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: HasCertificate
     Properties:
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref TargetGroup
       LoadBalancerArn: !Ref ApplicationLoadBalancer
-      Port: 80
-      Protocol: HTTP
+      Port: 443
+      Protocol: HTTPS
+      SslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      Certificates:
+        - CertificateArn: !Ref CertificateArn
 
   # ECS Task Execution Role
   ECSTaskExecutionRole:
@@ -199,6 +240,9 @@ Resources:
   ECSService:
     Type: AWS::ECS::Service
     DependsOn: ALBListener
+    # The target group must be attached to a listener before the service registers with it
+    Metadata:
+      HTTPSListener: !If [HasCertificate, !Ref HTTPSListener, '']
     Properties:
       ServiceName: !Sub '${Environment}-langgraph-service'
       Cluster: !Ref ECSCluster
@@ -265,10 +309,17 @@ Resources:
 
 Outputs:
   LoadBalancerURL:
-    Description: URL of the load balancer
-    Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}'
+    Description: URL of the application
+    Value: !If
+      - HasCertificate
+      - !Sub 'https://${DomainName}'
+      - !Sub 'http://${ApplicationLoadBalancer.DNSName}'
     Export:
       Name: !Sub '${Environment}-langgraph-alb-url'
+
+  LoadBalancerDNSName:
+    Description: DNS name of the load balancer (target for your domain's CNAME or alias record)
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
 
   ECSClusterName:
     Description: Name of the ECS cluster

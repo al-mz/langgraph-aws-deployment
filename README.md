@@ -15,56 +15,9 @@ Complete infrastructure-as-code solution for deploying LangGraph-based AI agents
 
 ## 🏛️ Architecture
 
-```
-Internet → ALB → ECS Fargate Tasks (Private Subnets) → OpenAI API
-                ↓
-        CloudWatch Logs & Parameter Store
-```
+![Architecture](docs/architecture.drawio.svg)
 
-### Deployment Architecture
-
-```mermaid
-graph TB
-    subgraph "🏗️ Development"
-        DEV[Developer] --> LOCAL[Local Testing]
-        LOCAL --> DOCKER[Docker Build]
-    end
-    
-    subgraph "☁️ AWS Infrastructure"
-        subgraph "🏗️ Foundation"
-            ECR[ECR Repository]
-            IAM[IAM Roles]
-            SSM[Parameter Store]
-        end
-        
-        subgraph "🌐 Network"
-            VPC[VPC] --> ALB[Load Balancer]
-            ALB --> ECS[ECS Service]
-        end
-        
-        subgraph "🚢 Application"
-            ECS --> TASK1[Fargate Task 1]
-            ECS --> TASK2[Fargate Task 2]
-        end
-    end
-    
-    subgraph "🌍 External"
-        USERS[Users] --> ALB
-        TASK1 --> OPENAI[OpenAI API]
-        TASK2 --> OPENAI
-    end
-    
-    DOCKER --> ECR
-    ECR --> ECS
-    
-    classDef aws fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:#fff
-    classDef app fill:#2196F3,stroke:#1565C0,stroke-width:2px,color:#fff
-    classDef ext fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px,color:#fff
-    
-    class ECR,IAM,SSM,VPC,ALB,ECS aws
-    class TASK1,TASK2,DOCKER app
-    class USERS,OPENAI ext
-```
+Users reach an internet-facing Application Load Balancer, which forwards to Fargate tasks in private subnets across two Availability Zones. The tasks call OpenAI through NAT gateways and read the API key from Parameter Store. The SVG embeds its draw.io source, so you can open and edit it at [app.diagrams.net](https://app.diagrams.net).
 
 ## 🚀 Quick Start
 
@@ -103,6 +56,14 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ```bash
 # Deploy to production
+./aws/scripts/deploy-langgraph.sh production us-east-1
+```
+
+To serve HTTPS, pass an ACM certificate and the domain it covers. Port 80 then redirects to 443. After the deploy, point the domain at the `LoadBalancerDNSName` stack output.
+
+```bash
+CERTIFICATE_ARN=arn:aws:acm:us-east-1:123456789012:certificate/... \
+DOMAIN_NAME=agent.example.com \
 ./aws/scripts/deploy-langgraph.sh production us-east-1
 ```
 

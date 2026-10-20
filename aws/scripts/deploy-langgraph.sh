@@ -163,7 +163,9 @@ aws cloudformation deploy \
     --capabilities CAPABILITY_IAM \
     --parameter-overrides \
         Environment=${ENVIRONMENT} \
-        ImageURI=${IMAGE_URI} > /dev/null || error_exit "Failed to deploy ECS stack"
+        ImageURI=${IMAGE_URI} \
+        CertificateArn="${CERTIFICATE_ARN:-}" \
+        DomainName="${DOMAIN_NAME:-}" > /dev/null || error_exit "Failed to deploy ECS stack"
 
 echo "✅ ECS stack deployed successfully"
 
@@ -196,32 +198,43 @@ echo "✅ ECS service updated with new deployment"
 echo "⏳ Waiting for deployment to stabilize..."
 sleep 30
 
-# Test health endpoint
-echo "🩺 Testing application health..."
-for i in {1..12}; do
-    if curl -s -f "${APP_URL}/health" > /dev/null 2>&1; then
-        echo "✅ Application is healthy and responding"
-        break
-    else
-        if [ $i -eq 12 ]; then
-            error_exit "Application health check failed after 2 minutes"
-        fi
-        echo "Waiting for application to be ready... (attempt $i/12)"
-        sleep 10
-    fi
-done
-
-# Test a simple chat request
-echo "🤖 Testing LangGraph agent..."
-CHAT_RESPONSE=$(curl -s -X POST "${APP_URL}/chat" \
-    -H "Content-Type: application/json" \
-    -d '{"message": "Hello! This is a deployment test.", "session_id": "deployment-test"}' \
-    --max-time 30) || error_exit "Failed to test chat endpoint"
-
-if echo "$CHAT_RESPONSE" | jq -e '.response' > /dev/null 2>&1; then
-    echo "✅ LangGraph agent is working correctly"
+if [ -n "${CERTIFICATE_ARN:-}" ]; then
+    # The certificate only matches DOMAIN_NAME, which can't point at the new ALB until it exists
+    ALB_DNS=$(aws cloudformation describe-stacks \
+        --stack-name ${STACK_PREFIX}-ecs \
+        --region ${AWS_REGION} \
+        --query 'Stacks[0].Outputs[?OutputKey==`LoadBalancerDNSName`].OutputValue' \
+        --output text)
+    echo "⚠️  HTTPS enabled: skipping smoke tests"
+    echo "   Point ${DOMAIN_NAME} (CNAME or Route 53 alias) at ${ALB_DNS}, then run: curl ${APP_URL}/health"
 else
-    error_exit "LangGraph agent test failed"
+    # Test health endpoint
+    echo "🩺 Testing application health..."
+    for i in {1..12}; do
+        if curl -s -f "${APP_URL}/health" > /dev/null 2>&1; then
+            echo "✅ Application is healthy and responding"
+            break
+        else
+            if [ $i -eq 12 ]; then
+                error_exit "Application health check failed after 2 minutes"
+            fi
+            echo "Waiting for application to be ready... (attempt $i/12)"
+            sleep 10
+        fi
+    done
+
+    # Test a simple chat request
+    echo "🤖 Testing LangGraph agent..."
+    CHAT_RESPONSE=$(curl -s -X POST "${APP_URL}/chat" \
+        -H "Content-Type: application/json" \
+        -d '{"message": "Hello! This is a deployment test.", "session_id": "deployment-test"}' \
+        --max-time 30) || error_exit "Failed to test chat endpoint"
+
+    if echo "$CHAT_RESPONSE" | jq -e '.response' > /dev/null 2>&1; then
+        echo "✅ LangGraph agent is working correctly"
+    else
+        error_exit "LangGraph agent test failed"
+    fi
 fi
 
 echo ""

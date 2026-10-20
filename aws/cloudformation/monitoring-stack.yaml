@@ -110,7 +110,7 @@ Resources:
               "width": 24,
               "height": 6,
               "properties": {
-                "query": "SOURCE '/ecs/${ProjectName}-${Environment}'\n| fields @timestamp, @message\n| filter @message like /ERROR/\n| sort @timestamp desc\n| limit 100",
+                "query": "SOURCE '/ecs/${Environment}-${ProjectName}'\n| fields @timestamp, @message\n| filter @message like /ERROR/\n| sort @timestamp desc\n| limit 100",
                 "region": "${AWS::Region}",
                 "title": "Application Errors",
                 "view": "table"
