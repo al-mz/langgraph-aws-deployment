@@ -157,6 +157,8 @@ deploy_infrastructure() {
         --parameter-overrides \
             Environment="$ENVIRONMENT" \
             ImageURI="$IMAGE_URI" \
+            CertificateArn="${CERTIFICATE_ARN:-}" \
+            DomainName="${DOMAIN_NAME:-}" \
         --capabilities CAPABILITY_IAM \
         --region "$REGION"
     
@@ -256,6 +258,8 @@ show_help() {
     echo "  OPENAI_API_KEY          OpenAI API key (required)"
     echo "  AWS_DEFAULT_REGION      AWS region (optional)"
     echo "  ENVIRONMENT             Environment name (optional)"
+    echo "  CERTIFICATE_ARN         ACM certificate ARN to enable HTTPS (optional)"
+    echo "  DOMAIN_NAME             Domain for the certificate (required with CERTIFICATE_ARN)"
     echo
     echo "Examples:"
     echo "  $0                                    # Deploy to development"

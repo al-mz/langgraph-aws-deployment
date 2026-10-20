@@ -117,25 +117,7 @@ else
     log_info "VPC stack ${STACK_PREFIX}-vpc does not exist"
 fi
 
-# Step 3: Delete Base Stack (if it exists)
-echo "🏗️  Deleting base infrastructure..."
-if aws cloudformation describe-stacks --stack-name ${STACK_PREFIX}-base --region ${AWS_REGION} --output text > /dev/null 2>&1; then
-    log_info "Deleting base stack: ${STACK_PREFIX}-base"
-    aws cloudformation delete-stack \
-        --stack-name ${STACK_PREFIX}-base \
-        --region ${AWS_REGION} || log_warning "Failed to delete base stack"
-    
-    log_info "Waiting for base stack deletion to complete..."
-    aws cloudformation wait stack-delete-complete \
-        --stack-name ${STACK_PREFIX}-base \
-        --region ${AWS_REGION} || log_warning "Base stack deletion timeout or failed"
-    
-    log_success "Base stack deleted successfully"
-else
-    log_info "Base stack ${STACK_PREFIX}-base does not exist"
-fi
-
-# Step 4: Delete ECR Repository and Images
+# Step 3: Delete ECR Repository and Images
 echo "📦 Deleting ECR repository..."
 if aws ecr describe-repositories --repository-names $REPOSITORY_NAME --region $AWS_REGION > /dev/null 2>&1; then
     log_info "Deleting all images in ECR repository: $REPOSITORY_NAME"
@@ -180,7 +162,7 @@ else
     log_info "ECR repository $REPOSITORY_NAME does not exist"
 fi
 
-# Step 5: Delete Parameter Store entries
+# Step 4: Delete Parameter Store entries
 echo "🔐 Deleting Parameter Store entries..."
 PARAMETERS=$(aws ssm describe-parameters --region $AWS_REGION --query "Parameters[?starts_with(Name, '/langgraph/')].Name" --output text 2>/dev/null || echo "")
 
@@ -196,7 +178,7 @@ else
     log_info "No Parameter Store entries found for /langgraph/"
 fi
 
-# Step 6: Delete CloudWatch Log Groups
+# Step 5: Delete CloudWatch Log Groups
 echo "📊 Deleting CloudWatch Log Groups..."
 LOG_GROUPS=$(aws logs describe-log-groups --region $AWS_REGION --log-group-name-prefix "/ecs/${ENVIRONMENT}-langgraph" --query 'logGroups[*].logGroupName' --output text 2>/dev/null || echo "")
 
@@ -212,7 +194,7 @@ else
     log_info "No CloudWatch Log Groups found for /ecs/${ENVIRONMENT}-langgraph"
 fi
 
-# Step 7: Clean up any remaining resources
+# Step 6: Clean up any remaining resources
 echo "🧹 Checking for any remaining resources..."
 
 # Check for any remaining ECS clusters
